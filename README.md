@@ -1,5 +1,7 @@
 # AI Resume Screening & Candidate Clustering Platform
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/2006pritam/AI-Resume-Screening)
+
 An explainable, high-throughput candidate screening and skill-archetype clustering platform built with **FastAPI**, **Python NLP**, and **React**. Designed for staffing agencies and talent acquisition teams to shortlist and analyze 300–800+ resumes within seconds.
 
 ---
@@ -24,6 +26,14 @@ An explainable, high-throughput candidate screening and skill-archetype clusteri
 4. **Interactive Recruiter Dashboard**:
    - Modern React + Tailwind UI with real-time candidate search, score threshold sliders, experience filtering, cluster drill-downs, and detailed candidate scorecards.
    - Resume upload modal with immediate structured extraction and re-ranking.
+
+---
+
+## ☁️ 1-Click Deployment on Render
+
+Click the button below to deploy this repository directly to Render using the pre-configured `render.yaml` Blueprint:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/2006pritam/AI-Resume-Screening)
 
 ---
 
@@ -57,7 +67,7 @@ ai_resume_screening/
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Local Setup Guide
 
 ### 1. Installation
 
@@ -87,15 +97,3 @@ python3 start.py
 
 - **Web Dashboard**: Open [http://localhost:8000](http://localhost:8000)
 - **Interactive Swagger API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## ☁️ Deploy to Render
-
-1. Create a new **Web Service** on [Render](https://render.com).
-2. Connect your GitHub repository: `2006pritam/AI-Resume-Screening`.
-3. Configure settings:
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt && python data_generator.py`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-4. Click **Deploy**.

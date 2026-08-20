@@ -1,3 +1,14 @@
+---
+title: AI Resume Screening & Candidate Clustering
+emoji: 🧠
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # AI Resume Screening & Candidate Clustering Platform
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/2006pritam/AI-Resume-Screening)
@@ -26,6 +37,21 @@ An explainable, high-throughput candidate screening and skill-archetype clusteri
 4. **Interactive Recruiter Dashboard**:
    - Modern React + Tailwind UI with real-time candidate search, score threshold sliders, experience filtering, cluster drill-downs, and detailed candidate scorecards.
    - Resume upload modal with immediate structured extraction and re-ranking.
+
+---
+
+## 🤗 Deploy to Hugging Face Spaces
+
+1. Go to [Hugging Face Create Space](https://huggingface.co/new-space).
+2. Set Space Name: `ai-resume-screening`
+3. Select License: `MIT`
+4. Select **Docker** as Space SDK (Blank).
+5. Clone or sync this repository:
+   ```bash
+   git remote add space https://huggingface.co/spaces/pritam06/ai-resume-screening
+   git push space main
+   ```
+   *Or duplicate/import repository directly from GitHub: `https://github.com/2006pritam/AI-Resume-Screening`.*
 
 ---
 
@@ -60,7 +86,7 @@ ai_resume_screening/
 ├── data_generator.py    # Synthetic dataset generator
 ├── requirements.txt     # Python dependencies
 ├── render.yaml          # Render Blueprint deployment config
-├── Dockerfile           # Docker container specification
+├── Dockerfile           # Docker container specification (HF Space compatible)
 ├── start.py             # Server launcher script
 └── README.md
 ```
@@ -69,31 +95,14 @@ ai_resume_screening/
 
 ## 🚀 Local Setup Guide
 
-### 1. Installation
-
 ```bash
 git clone https://github.com/2006pritam/AI-Resume-Screening.git
 cd AI-Resume-Screening
 
-# Create virtual environment
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
-```
-
-### 2. Generate Synthetic Resumes
-
-```bash
 python3 data_generator.py
-```
-
-### 3. Run the Server
-
-```bash
 python3 start.py
 ```
-
-- **Web Dashboard**: Open [http://localhost:8000](http://localhost:8000)
-- **Interactive Swagger API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)

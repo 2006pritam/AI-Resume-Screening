@@ -1,0 +1,122 @@
+{
+  "job_react_dev": {
+    "id": "job_react_dev",
+    "title": "Senior React / Frontend Developer",
+    "department": "Engineering",
+    "min_experience_years": 4,
+    "required_skills": [
+      "React",
+      "TypeScript",
+      "JavaScript",
+      "HTML/CSS",
+      "Redux",
+      "REST APIs"
+    ],
+    "preferred_skills": [
+      "Next.js",
+      "Tailwind CSS",
+      "GraphQL",
+      "Jest",
+      "CI/CD",
+      "Webpack"
+    ],
+    "min_education": "Bachelor",
+    "description": "Looking for an experienced React developer to build high-performance web applications using modern React, TypeScript, and state management tools.",
+    "responsibilities": [
+      "Architect and build reusable frontend components in React and TypeScript",
+      "Optimize web applications for maximum speed and scalability",
+      "Collaborate with backend engineers to integrate REST and GraphQL APIs",
+      "Write comprehensive unit and integration tests using Jest and React Testing Library"
+    ]
+  },
+  "job_qa_automation": {
+    "id": "job_qa_automation",
+    "title": "QA Automation Engineer",
+    "department": "Quality Assurance",
+    "min_experience_years": 3,
+    "required_skills": [
+      "Selenium",
+      "Python",
+      "Test Automation",
+      "API Testing",
+      "Postman",
+      "Git"
+    ],
+    "preferred_skills": [
+      "Cypress",
+      "Playwright",
+      "Jenkins",
+      "Docker",
+      "SQL",
+      "Jira"
+    ],
+    "min_education": "Bachelor",
+    "description": "Seeking a dedicated QA Automation Engineer to design, develop, and maintain robust automated test suites for web and backend services.",
+    "responsibilities": [
+      "Develop automated test scripts using Selenium and Python/Playwright",
+      "Execute end-to-end integration and regression test suites",
+      "Perform API testing with Postman and automated pipelines in Jenkins",
+      "Identify, log, and track software defects in Jira"
+    ]
+  },
+  "job_data_analyst": {
+    "id": "job_data_analyst",
+    "title": "Data Analyst / BI Specialist",
+    "department": "Analytics",
+    "min_experience_years": 2,
+    "required_skills": [
+      "SQL",
+      "Python",
+      "Data Analysis",
+      "Tableau",
+      "Excel",
+      "Data Visualization"
+    ],
+    "preferred_skills": [
+      "Power BI",
+      "Pandas",
+      "R",
+      "Statistics",
+      "Snowflake",
+      "dbt"
+    ],
+    "min_education": "Bachelor",
+    "description": "Looking for a Data Analyst to extract business insights, build interactive dashboards, and drive data-informed decisions across product teams.",
+    "responsibilities": [
+      "Query complex relational databases using advanced SQL",
+      "Build automated reporting dashboards in Tableau and Power BI",
+      "Conduct exploratory data analysis using Python and Pandas",
+      "Present key performance metrics and actionable insights to executive leadership"
+    ]
+  },
+  "job_node_backend": {
+    "id": "job_node_backend",
+    "title": "Backend Node.js Engineer",
+    "department": "Backend",
+    "min_experience_years": 4,
+    "required_skills": [
+      "Node.js",
+      "Express",
+      "PostgreSQL",
+      "REST APIs",
+      "TypeScript",
+      "Docker"
+    ],
+    "preferred_skills": [
+      "NestJS",
+      "Redis",
+      "MongoDB",
+      "AWS",
+      "Kafka",
+      "Microservices"
+    ],
+    "min_education": "Bachelor",
+    "description": "Join our platform team to design, scale, and maintain high-throughput backend microservices using Node.js, Express, and distributed caching.",
+    "responsibilities": [
+      "Design secure and scalable RESTful APIs in Node.js and TypeScript",
+      "Optimize PostgreSQL queries and database schemas for high concurrency",
+      "Implement caching mechanisms with Redis and asynchronous queues",
+      "Containerize microservices with Docker and deploy to cloud environments"
+    ]
+  }
+}

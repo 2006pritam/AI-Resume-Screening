@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Resume Screening & Candidate Clustering</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+    .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    function App() {
+      const [jobs, setJobs] = useState([]);
+      const [selectedJobId, setSelectedJobId] = useState("");
+      const [screeningData, setScreeningData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [selectedCandidate, setSelectedCandidate] = useState(null);
+      const [filterCluster, setFilterCluster] = useState(null);
+      const [searchQuery, setSearchQuery] = useState("");
+      const [minScore, setMinScore] = useState(0);
+      const [minExp, setMinExp] = useState(0);
+      const [showUploadModal, setShowUploadModal] = useState(false);
+      const [uploadText, setUploadText] = useState("");
+      const [uploadStatus, setUploadStatus] = useState("");
+
+      useEffect(() => {
+        fetchJobs();
+      }, []);
+
+      const fetchJobs = async () => {
+        try {
+          const res = await fetch("/api/jobs");
+          const data = await res.json();
+          setJobs(data);
+          if (data.length > 0) {
+            setSelectedJobId(data[0].id);
+          }
+        } catch (err) {
+          console.error("Failed to load jobs:", err);
+        }
+      };
+
+      useEffect(() => {
+        if (!selectedJobId) return;
+        runScreening(selectedJobId);
+      }, [selectedJobId]);
+
+      const runScreening = async (jobId) => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/screen?job_id=${jobId}`, { method: "POST" });
+          const data = await res.json();
+          setScreeningData(data);
+          setFilterCluster(null);
+        } catch (err) {
+          console.error("Screening failed:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleUploadResume = async (e) => {
+        e.preventDefault();
+        if (!uploadText.trim()) return;
+        setUploadStatus("Parsing structured fields...");
+        try {
+          const res = await fetch("/api/resumes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ raw_text: uploadText })
+          });
+          if (res.ok) {
+            setUploadStatus("Candidate added! Re-screening...");
+            await runScreening(selectedJobId);
+            setTimeout(() => {
+              setShowUploadModal(false);
+              setUploadText("");
+              setUploadStatus("");
+            }, 800);
+          } else {
+            setUploadStatus("Failed to parse resume.");
+          }
+        } catch (err) {
+          setUploadStatus("Error uploading resume.");
+        }
+      };
+
+      const selectedJob = useMemo(() => {
+        return jobs.find(j => j.id === selectedJobId) || {};
+      }, [jobs, selectedJobId]);
+
+      const filteredResults = useMemo(() => {
+        if (!screeningData || !screeningData.results) return [];
+        return screeningData.results.filter(r => {
+          if (filterCluster !== null && r.cluster_id !== filterCluster) return false;
+          if (r.score_breakdown.overall_score < minScore) return false;
+          if (r.candidate.years_exp < minExp) return false;
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            const nameMatch = r.candidate.name.toLowerCase().includes(q);
+            const emailMatch = (r.candidate.email || "").toLowerCase().includes(q);
+            const skillMatch = r.candidate.skills.some(s => s.toLowerCase().includes(q));
+            const companyMatch = r.candidate.companies.some(c => c.toLowerCase().includes(q));
+            if (!nameMatch && !emailMatch && !skillMatch && !companyMatch) return false;
+          }
+          return true;
+        });
+      }, [screeningData, filterCluster, minScore, minExp, searchQuery]);
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          <header className="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-30 backdrop-blur-md px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                <i className="fa-solid fa-brain text-xl"></i>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                  TalentRadar AI <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">Explainable Screening</span>
+                </h1>
+                <p className="text-xs text-slate-400">High-Throughput Candidate Screening & Cluster Intelligence</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedJobId}
+                onChange={(e) => setSelectedJobId(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-4 py-2.5 pr-8 focus:outline-none focus:border-indigo-500 font-medium cursor-pointer"
+              >
+                {jobs.map(j => (
+                  <option key={j.id} value={j.id}>{j.title} ({j.min_experience_years}+ yrs)</option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-md shadow-indigo-600/30"
+              >
+                <i className="fa-solid fa-file-arrow-up"></i>
+                <span>Upload Resume</span>
+              </button>
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+            {screeningData && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="glass-card rounded-2xl p-5 border-l-4 border-indigo-500">
+                  <p className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Total Resumes</p>
+                  <h3 className="text-3xl font-extrabold text-white mt-1">{screeningData.total_candidates_screened}</h3>
+                  <p className="text-xs text-slate-400 mt-2">Screened & ranked</p>
+                </div>
+                <div className="glass-card rounded-2xl p-5 border-l-4 border-emerald-500">
+                  <p className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Shortlisted (Score ≥ 70)</p>
+                  <h3 className="text-3xl font-extrabold text-emerald-400 mt-1">{screeningData.shortlisted_count}</h3>
+                  <p className="text-xs text-slate-400 mt-2">Qualified candidates</p>
+                </div>
+                <div className="glass-card rounded-2xl p-5 border-l-4 border-cyan-500">
+                  <p className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Skill Clusters</p>
+                  <h3 className="text-3xl font-extrabold text-cyan-400 mt-1">{screeningData.clusters.length}</h3>
+                  <p className="text-xs text-slate-400 mt-2">Archetype groups</p>
+                </div>
+                <div className="glass-card rounded-2xl p-5 border-l-4 border-purple-500">
+                  <p className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Top Match Score</p>
+                  <h3 className="text-3xl font-extrabold text-purple-400 mt-1">
+                    {screeningData.results.length > 0 ? screeningData.results[0].score_breakdown.overall_score : 0}%
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-2">{screeningData.results[0]?.candidate.name || "N/A"}</p>
+                </div>
+              </div>
+            )}
+
+            {selectedJob && (
+              <div className="glass-card rounded-2xl p-5 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <span className="text-xs font-bold uppercase bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-500/30">
+                      {selectedJob.department} • Min {selectedJob.min_experience_years} Yrs Exp
+                    </span>
+                    <h2 className="text-xl font-bold text-white mt-2">{selectedJob.title}</h2>
+                    <p className="text-xs text-slate-400 mt-1">{selectedJob.description}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-w-lg">
+                    {selectedJob.required_skills?.map((s, i) => (
+                      <span key={i} className="text-xs font-semibold bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                        {s}
+                      </span>
+                    ))}
+                    {selectedJob.preferred_skills?.map((s, i) => (
+                      <span key={i} className="text-xs font-medium bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-lg border border-blue-500/30">
+                        +{s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {screeningData && (
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center gap-2">
+                  <i className="fa-solid fa-shapes text-indigo-400"></i>
+                  Discovered Candidate Skill Clusters
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {screeningData.clusters.map((c) => (
+                    <div
+                      key={c.cluster_id}
+                      onClick={() => setFilterCluster(filterCluster === c.cluster_id ? null : c.cluster_id)}
+                      className={`cursor-pointer rounded-xl p-4 transition-all duration-200 ${
+                        filterCluster === c.cluster_id
+                          ? "bg-indigo-600/30 border-2 border-indigo-500 shadow-lg shadow-indigo-500/20"
+                          : "glass-card hover:bg-slate-800/80 border border-slate-700/60"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                          {c.candidate_count} candidates
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${c.avg_score >= 70 ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
+                          Avg: {c.avg_score}%
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-white mb-2">{c.cluster_name}</h4>
+                      <p className="text-xs text-slate-400">Avg Exp: <strong className="text-slate-200">{c.avg_experience} yrs</strong></p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+              <input
+                type="text"
+                placeholder="Search candidate by name, skill, past company..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full md:w-80 bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500"
+              />
+              <div className="flex items-center gap-4 text-xs font-medium text-slate-300">
+                <label className="flex items-center gap-2">
+                  <span>Min Score:</span>
+                  <input type="range" min="0" max="90" step="5" value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} className="w-24 accent-indigo-500" />
+                  <span className="font-bold text-indigo-400">{minScore}%</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span>Min Exp:</span>
+                  <select value={minExp} onChange={(e) => setMinExp(Number(e.target.value))} className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200">
+                    <option value="0">All</option>
+                    <option value="2">2+ yrs</option>
+                    <option value="4">4+ yrs</option>
+                    <option value="6">6+ yrs</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl overflow-hidden shadow-xl">
+              <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+                <h3 className="font-bold text-white text-base">Candidate Shortlist Ranking ({filteredResults.length} candidates)</h3>
+                <span className="text-xs text-slate-400">Explainable Scoring</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900/60 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                      <th className="py-3 px-4 text-center w-16">Rank</th>
+                      <th className="py-3 px-4">Candidate</th>
+                      <th className="py-3 px-4">Experience</th>
+                      <th className="py-3 px-4">Skill Cluster</th>
+                      <th className="py-3 px-4">Matched Skills</th>
+                      <th className="py-3 px-4 text-center">Score</th>
+                      <th className="py-3 px-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-sm">
+                    {filteredResults.map((item) => (
+                      <tr key={item.candidate.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-4 text-center font-bold text-slate-300">{item.rank}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-white">{item.candidate.name}</div>
+                          <div className="text-xs text-slate-400">{item.candidate.email}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-slate-200">{item.candidate.years_exp} yrs</div>
+                          {item.candidate.companies[0] && <div className="text-xs text-slate-500">ex-{item.candidate.companies[0]}</div>}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-800/50">
+                            {item.cluster_name}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {item.score_breakdown.matched_required_skills.slice(0, 3).map((s, idx) => (
+                              <span key={idx} className="text-xs bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-base text-emerald-400">
+                          {item.score_breakdown.overall_score}%
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => setSelectedCandidate(item)}
+                            className="bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
+                          >
+                            Explain
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </main>
+
+          {selectedCandidate && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+              <div className="glass-card bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 space-y-5">
+                <div className="flex justify-between items-start border-b border-slate-800 pb-3">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{selectedCandidate.candidate.name} (Rank #{selectedCandidate.rank})</h3>
+                    <p className="text-xs text-slate-400">{selectedCandidate.candidate.email} • {selectedCandidate.candidate.years_exp} Yrs Exp • {selectedCandidate.cluster_name}</p>
+                  </div>
+                  <button onClick={() => setSelectedCandidate(null)} className="text-slate-400 hover:text-white text-lg">✕</button>
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="p-3 bg-slate-800 rounded-xl">
+                    <p className="text-[10px] uppercase text-slate-400">Overall</p>
+                    <p className="text-xl font-bold text-indigo-400">{selectedCandidate.score_breakdown.overall_score}%</p>
+                  </div>
+                  <div className="p-3 bg-slate-800 rounded-xl">
+                    <p className="text-[10px] uppercase text-slate-400">Skills (45%)</p>
+                    <p className="text-xl font-bold text-emerald-400">{selectedCandidate.score_breakdown.skill_score}%</p>
+                  </div>
+                  <div className="p-3 bg-slate-800 rounded-xl">
+                    <p className="text-[10px] uppercase text-slate-400">Exp (25%)</p>
+                    <p className="text-xl font-bold text-cyan-400">{selectedCandidate.score_breakdown.experience_score}%</p>
+                  </div>
+                  <div className="p-3 bg-slate-800 rounded-xl">
+                    <p className="text-[10px] uppercase text-slate-400">Projects (15%)</p>
+                    <p className="text-xl font-bold text-purple-400">{selectedCandidate.score_breakdown.project_score}%</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-indigo-950/30 border border-indigo-500/30 rounded-xl">
+                  <h4 className="text-xs font-bold uppercase text-indigo-300 mb-2">Why this candidate ranked here:</h4>
+                  <ul className="text-xs text-slate-200 space-y-1">
+                    {selectedCandidate.score_breakdown.explanation_highlights.map((h, i) => (
+                      <li key={i} className="flex items-start gap-2">✓ {h}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex justify-end">
+                  <button onClick={() => setSelectedCandidate(null)} className="px-4 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg">Close</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showUploadModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+              <div className="glass-card bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4">
+                <h3 className="text-lg font-bold text-white">Upload / Parse Resume</h3>
+                <form onSubmit={handleUploadResume} className="space-y-3">
+                  <textarea rows="6" value={uploadText} onChange={(e) => setUploadText(e.target.value)} placeholder="Paste resume text..." className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-xs text-slate-200 focus:outline-none" required></textarea>
+                  {uploadStatus && <p className="text-xs text-indigo-400">{uploadStatus}</p>}
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => setShowUploadModal(false)} className="px-3 py-1.5 text-xs bg-slate-800 text-slate-300 rounded-lg">Cancel</button>
+                    <button type="submit" className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg">Extract & Screen</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

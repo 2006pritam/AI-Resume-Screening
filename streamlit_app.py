@@ -16,6 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS for modern sleek recruiter dashboard
 st.markdown("""
 <style>
     .cluster-card {
@@ -68,12 +69,14 @@ def get_screening_service():
 
 service = get_screening_service()
 
+# --- SIDEBAR: Role Selection, Global Filters & Advanced Weight Settings ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/8649/8649607.png", width=55)
     st.title("TalentRadar AI")
     st.caption("Explainable Resume Screening & Skill Clustering")
     st.markdown("---")
     
+    # Target Job Selector
     jobs = service.get_all_jobs()
     if not jobs:
         st.error("No jobs loaded. Please initialize data.")
@@ -102,6 +105,7 @@ with st.sidebar:
         cluster_k = st.slider("Number of Skill Clusters (k)", 2, 8, 5, step=1)
         strict_core = st.checkbox("Strict Core Skills Mode", value=False, help="Penalizes candidates if any required mandatory skill is missing.")
 
+# --- RUN DYNAMIC SCREENING ---
 screening_res = service.run_screening(
     job_id=active_job_id,
     skill_weight=float(skill_weight),
@@ -112,6 +116,7 @@ screening_res = service.run_screening(
     strict_core_skills=strict_core
 )
 
+# Apply Candidate Filters
 filtered_results = screening_res.results
 if min_score > 0:
     filtered_results = [r for r in filtered_results if r.score_breakdown.overall_score >= min_score]
@@ -128,6 +133,7 @@ if search_keyword.strip():
         or any(q in p.lower() for p in r.candidate.projects)
     ]
 
+# --- DASHBOARD HEADER & KPIS ---
 st.title("🧠 AI Resume Screening & Skill Clustering Dashboard")
 st.markdown(f"**Active Opening**: `{active_job.title}` ({active_job.department}) | **Target Experience**: `{active_job.min_experience_years} Years`")
 
@@ -142,6 +148,7 @@ with col4:
     top_score = screening_res.results[0].score_breakdown.overall_score if screening_res.results else 0
     st.metric("Top Candidate Score", f"{top_score}%")
 
+# Active Job Requirements Expander
 with st.expander("📋 View Active Job Requirements & Responsibilities", expanded=False):
     st.write(f"**Description**: {active_job.description}")
     req_col, pref_col = st.columns(2)
@@ -155,6 +162,7 @@ with st.expander("📋 View Active Job Requirements & Responsibilities", expande
     for resp in active_job.responsibilities:
         st.write(f"- {resp}")
 
+# --- MAIN NAVIGATION TABS ---
 tab_upload, tab_shortlist, tab_clusters, tab_explain, tab_new_job = st.tabs([
     "📥 Dynamic CV Upload Box",
     "🏆 Candidate Shortlist",
@@ -163,6 +171,9 @@ tab_upload, tab_shortlist, tab_clusters, tab_explain, tab_new_job = st.tabs([
     "➕ Create Custom Job"
 ])
 
+# ==========================================
+# TAB 1: DYNAMIC AUTOMATIC CV UPLOAD BOX
+# ==========================================
 with tab_upload:
     st.subheader("📥 Dynamic & Automatic Resume / CV Upload Box")
     st.markdown("Upload candidate resumes in **PDF, DOCX, or TXT** format (or drag-and-drop multiple CV files). The AI extractor will automatically parse structured entities, evaluate candidates against the active opening, and cluster them into skill archetypes.")
@@ -249,6 +260,9 @@ Projects:
                     st.markdown(f"**Extracted Education**: `{new_cand.education.degree}` ({new_cand.education.level})")
                     st.markdown(f"**Assigned Skill Cluster**: `{new_cand_res.cluster_name}`")
 
+# ==========================================
+# TAB 2: CANDIDATE SHORTLIST TABLE
+# ==========================================
 with tab_shortlist:
     st.subheader(f"Ranked Candidate Shortlist ({len(filtered_results)} candidates showing)")
     
@@ -296,6 +310,9 @@ with tab_shortlist:
             mime="text/csv"
         )
 
+# ==========================================
+# TAB 3: CLUSTERS VIEW
+# ==========================================
 with tab_clusters:
     st.subheader("🧩 Candidate Skill Archetypes (K-Means Clustering)")
     st.caption("Candidates grouped by latent skill vectors and project keywords to uncover distinct talent pools.")
@@ -323,6 +340,9 @@ with tab_clusters:
                     
                     st.markdown(f"**Recruiter Note**: *{c.shortlist_recommendation}*")
 
+# ==========================================
+# TAB 4: DEEP EXPLAINABILITY INSPECTOR
+# ==========================================
 with tab_explain:
     st.subheader("🔎 Deep Candidate Scorecard & Explainable Reasoning")
     
@@ -392,6 +412,9 @@ with tab_explain:
         for proj in c.projects:
             st.info(f"📌 {proj}")
 
+# ==========================================
+# TAB 5: CREATE CUSTOM JOB OPENING
+# ==========================================
 with tab_new_job:
     st.subheader("➕ Create / Define a New Job Description")
     st.caption("Add a custom job opening to screen all candidates against.")
@@ -430,4 +453,3 @@ with tab_new_job:
                 service.add_job(new_job_obj)
                 st.success(f"Job **{nj_title}** created successfully! Select it from the sidebar to view candidate rankings.")
                 st.rerun()
-EOF

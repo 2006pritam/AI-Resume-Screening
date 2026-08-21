@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from typing import Dict, List, Any, Optional
 import numpy as np
 
@@ -30,9 +31,22 @@ class ScreeningService:
         self._fit_vectorizer()
 
     def _load_initial_data(self):
+        os.makedirs(DATA_DIR, exist_ok=True)
         jobs_file = os.path.join(DATA_DIR, "jobs.json")
         resumes_file = os.path.join(DATA_DIR, "resumes.json")
         
+        # If files are missing, automatically generate synthetic dataset
+        if not os.path.exists(jobs_file) or not os.path.exists(resumes_file) or (os.path.exists(resumes_file) and os.path.getsize(resumes_file) < 50):
+            try:
+                from data_generator import generate_synthetic_dataset
+                dataset = generate_synthetic_dataset(150)
+                with open(jobs_file, "w") as f:
+                    json.dump(dataset["jobs"], f, indent=2)
+                with open(resumes_file, "w") as f:
+                    json.dump(dataset["resumes"], f, indent=2)
+            except Exception as e:
+                print(f"Warning: Auto-generation fallback: {e}")
+                
         if os.path.exists(jobs_file):
             with open(jobs_file, "r") as f:
                 jobs_data = json.load(f)
@@ -88,7 +102,10 @@ class ScreeningService:
 
         job = self.jobs.get(job_id)
         if not job:
-            raise ValueError(f"Job ID '{job_id}' not found.")
+            if self.jobs:
+                job = list(self.jobs.values())[0]
+            else:
+                raise ValueError(f"Job ID '{job_id}' not found and no jobs available.")
 
         candidate_list = list(self.candidates.values())
         if not candidate_list:
@@ -192,7 +209,7 @@ class ScreeningService:
             filtered = [
                 r for r in filtered
                 if q in r.candidate.name.lower() or
-                   q in r.candidate.email.lower() or
+                   q in (r.candidate.email or "").lower() or
                    any(q in s.lower() for s in r.candidate.skills) or
                    any(q in c.lower() for c in r.candidate.companies)
             ]

@@ -4,7 +4,6 @@ import json
 import os
 import sys
 
-# Ensure local modules can be imported
 sys.path.insert(0, os.path.dirname(__file__))
 
 from app.service import ScreeningService
@@ -17,31 +16,48 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling for polished recruiter dashboard
 st.markdown("""
 <style>
     .cluster-card {
         background-color: #0f172a;
         border: 1px solid #3b82f6;
-        border-radius: 10px;
-        padding: 14px;
-        margin-bottom: 10px;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     .highlight-badge {
         background-color: #064e3b;
         color: #6ee7b7;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 6px;
         font-size: 12px;
         font-weight: 600;
+        margin-right: 4px;
+        margin-bottom: 4px;
+        display: inline-block;
     }
     .missing-badge {
         background-color: #881337;
         color: #fca5a5;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 6px;
         font-size: 12px;
         font-weight: 600;
+        margin-right: 4px;
+        margin-bottom: 4px;
+        display: inline-block;
+    }
+    .pref-badge {
+        background-color: #1e3a8a;
+        color: #93c5fd;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-right: 4px;
+        margin-bottom: 4px;
+        display: inline-block;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -52,21 +68,19 @@ def get_screening_service():
 
 service = get_screening_service()
 
-# --- SIDEBAR: Role Selection & Global Filters ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/8649/8649607.png", width=60)
+    st.image("https://cdn-icons-png.flaticon.com/512/8649/8649607.png", width=55)
     st.title("TalentRadar AI")
     st.caption("Explainable Resume Screening & Skill Clustering")
     st.markdown("---")
     
-    # Target Job Selector
     jobs = service.get_all_jobs()
     if not jobs:
-        st.error("No jobs loaded. Initializing dataset...")
+        st.error("No jobs loaded. Please initialize data.")
         st.stop()
         
     job_options = {f"{j.title} (Min {j.min_experience_years}+ yrs)": j.id for j in jobs}
-    selected_label = st.selectbox("🎯 Target Role / Job Description", list(job_options.keys()))
+    selected_label = st.selectbox("🎯 Target Role / Job Opening", list(job_options.keys()))
     active_job_id = job_options[selected_label]
     active_job = service.get_job(active_job_id)
     
@@ -74,15 +88,30 @@ with st.sidebar:
     st.subheader("⚙️ Candidate Filters")
     min_score = st.slider("Minimum Match Score (%)", 0, 95, 0, step=5)
     min_exp = st.slider("Minimum Experience (Years)", 0, 12, 0, step=1)
-    search_keyword = st.text_input("🔍 Keyword / Skill Search", placeholder="e.g. React, Docker, TCS...")
+    search_keyword = st.text_input("🔍 Search by Name, Skill, Company", placeholder="e.g. React, Docker, TCS...")
     
     st.markdown("---")
-    st.info("💡 **Explainable AI**: Matches candidates across skills (45%), experience (25%), education (15%), and projects (15%) with transparent reasoning.")
+    with st.expander("🛠️ Advanced Scoring & Weight Settings", expanded=False):
+        st.caption("Customize the relative importance of evaluation components:")
+        skill_weight = st.slider("Skill Match Weight", 0, 100, 45, step=5)
+        exp_weight = st.slider("Experience Weight", 0, 100, 25, step=5)
+        edu_weight = st.slider("Education Fit Weight", 0, 100, 15, step=5)
+        proj_weight = st.slider("Project Relevance Weight", 0, 100, 15, step=5)
+        
+        st.markdown("---")
+        cluster_k = st.slider("Number of Skill Clusters (k)", 2, 8, 5, step=1)
+        strict_core = st.checkbox("Strict Core Skills Mode", value=False, help="Penalizes candidates if any required mandatory skill is missing.")
 
-# --- RUN SCREENING ---
-screening_res = service.run_screening(active_job_id)
+screening_res = service.run_screening(
+    job_id=active_job_id,
+    skill_weight=float(skill_weight),
+    exp_weight=float(exp_weight),
+    edu_weight=float(edu_weight),
+    project_weight=float(proj_weight),
+    n_clusters=cluster_k,
+    strict_core_skills=strict_core
+)
 
-# Filter results
 filtered_results = screening_res.results
 if min_score > 0:
     filtered_results = [r for r in filtered_results if r.score_breakdown.overall_score >= min_score]
@@ -99,27 +128,25 @@ if search_keyword.strip():
         or any(q in p.lower() for p in r.candidate.projects)
     ]
 
-# --- MAIN DASHBOARD HEADER & KPIS ---
 st.title("🧠 AI Resume Screening & Skill Clustering Dashboard")
-st.markdown(f"**Target Role**: `{active_job.title}` ({active_job.department}) | **Required Experience**: `{active_job.min_experience_years} Years`")
+st.markdown(f"**Active Opening**: `{active_job.title}` ({active_job.department}) | **Target Experience**: `{active_job.min_experience_years} Years`")
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("Total Resumes Screened", screening_res.total_candidates_screened)
+    st.metric("Total Resumes in Pool", screening_res.total_candidates_screened)
 with col2:
     st.metric("Shortlisted (Score ≥ 70%)", screening_res.shortlisted_count)
 with col3:
     st.metric("Skill Clusters Discovered", len(screening_res.clusters))
 with col4:
     top_score = screening_res.results[0].score_breakdown.overall_score if screening_res.results else 0
-    st.metric("Top Candidate Match", f"{top_score}%")
+    st.metric("Top Candidate Score", f"{top_score}%")
 
-# Active Job Requirements Expander
-with st.expander("📋 View Full Job Description & Skill Requirements", expanded=False):
+with st.expander("📋 View Active Job Requirements & Responsibilities", expanded=False):
     st.write(f"**Description**: {active_job.description}")
     req_col, pref_col = st.columns(2)
     with req_col:
-        st.markdown("**Required Skills:**")
+        st.markdown("**Required Core Skills:**")
         st.write(", ".join([f"`{s}`" for s in active_job.required_skills]))
     with pref_col:
         st.markdown("**Preferred / Bonus Skills:**")
@@ -128,15 +155,100 @@ with st.expander("📋 View Full Job Description & Skill Requirements", expanded
     for resp in active_job.responsibilities:
         st.write(f"- {resp}")
 
-# --- TABS: Shortlist, Clusters, Deep Explainability, Upload ---
-tab_shortlist, tab_clusters, tab_explain, tab_upload = st.tabs([
+tab_upload, tab_shortlist, tab_clusters, tab_explain, tab_new_job = st.tabs([
+    "📥 Dynamic CV Upload Box",
     "🏆 Candidate Shortlist",
     "🧩 Skill Archetype Clusters",
     "🔎 Explainability Inspector",
-    "📄 Upload & Parse Resume"
+    "➕ Create Custom Job"
 ])
 
-# --- TAB 1: Shortlist Table ---
+with tab_upload:
+    st.subheader("📥 Dynamic & Automatic Resume / CV Upload Box")
+    st.markdown("Upload candidate resumes in **PDF, DOCX, or TXT** format (or drag-and-drop multiple CV files). The AI extractor will automatically parse structured entities, evaluate candidates against the active opening, and cluster them into skill archetypes.")
+    
+    upload_mode = st.radio("Choose Input Method:", ["📁 Drag & Drop File Upload (PDF, DOCX, TXT)", "✍️ Paste Resume Text"], horizontal=True)
+    
+    if upload_mode == "📁 Drag & Drop File Upload (PDF, DOCX, TXT)":
+        uploaded_files = st.file_uploader(
+            "Drop Single or Batch Resume Files Here",
+            type=["pdf", "docx", "txt", "md"],
+            accept_multiple_files=True,
+            help="Supports PDF, DOCX, TXT. You can upload multiple resumes at once."
+        )
+        
+        if uploaded_files:
+            st.info(f"📁 {len(uploaded_files)} file(s) selected for processing.")
+            if st.button(f"⚡ Automatically Process & Screen {len(uploaded_files)} Resume(s)", type="primary"):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                newly_added = []
+                
+                for idx, file in enumerate(uploaded_files):
+                    status_text.text(f"Processing ({idx+1}/{len(uploaded_files)}): {file.name}...")
+                    file_bytes = file.read()
+                    cand = service.add_resume_file(file_bytes, file.name)
+                    newly_added.append(cand)
+                    progress_bar.progress((idx + 1) / len(uploaded_files))
+                    
+                status_text.success(f"🎉 Successfully extracted and screened {len(newly_added)} candidate resume(s)!")
+                
+                refresh_res = service.run_screening(active_job_id, force_refresh=True)
+                
+                st.markdown("#### 📋 Extraction & Screening Summary for Uploaded Batch:")
+                batch_summary = []
+                for c in newly_added:
+                    c_res = next((r for r in refresh_res.results if r.candidate.id == c.id), None)
+                    batch_summary.append({
+                        "Candidate Name": c.name,
+                        "Experience": f"{c.years_exp} yrs",
+                        "Extracted Skills": ", ".join(c.skills[:5]),
+                        "Education": c.education.degree,
+                        "Match Score": f"{c_res.score_breakdown.overall_score}%" if c_res else "N/A",
+                        "Assigned Cluster": c_res.cluster_name if c_res else "N/A",
+                        "Rank": f"#{c_res.rank}" if c_res else "N/A"
+                    })
+                st.dataframe(pd.DataFrame(batch_summary), use_container_width=True)
+                st.info("💡 Switch to the **'Candidate Shortlist'** or **'Explainability Inspector'** tab to explore full scorecards.")
+                
+    else:
+        custom_resume_text = st.text_area(
+            "Paste Raw Resume Content:",
+            height=200,
+            placeholder="""Pritam Kumar Modak
+Email: pritam.modak@example.com | Experience: 5.5 Years in Web Development
+Skills: React, TypeScript, Next.js, Redux, Tailwind CSS, Jest, GraphQL, REST APIs, Git
+Education: B.Tech in Information Technology from Supreme Knowledge Foundation
+Companies: TCS, Cognizant
+Projects:
+- Built high-performance SaaS analytics dashboard using React 18, Next.js, and TypeScript.
+- Architected reusable component library and automated unit test suites in Jest."""
+        )
+        
+        if st.button("⚡ Extract Structured Fields & Screen Resume", type="primary"):
+            if not custom_resume_text.strip():
+                st.error("Please enter resume text.")
+            else:
+                with st.spinner("Extracting structured fields and scoring..."):
+                    new_cand = service.add_resume(custom_resume_text)
+                    refresh_res = service.run_screening(active_job_id, force_refresh=True)
+                    new_cand_res = next(r for r in refresh_res.results if r.candidate.id == new_cand.id)
+                    
+                    st.success(f"Candidate **{new_cand.name}** successfully parsed and screened!")
+                    
+                    ecol1, ecol2, ecol3 = st.columns(3)
+                    with ecol1:
+                        st.metric("Extracted Experience", f"{new_cand.years_exp} Years")
+                    with ecol2:
+                        st.metric("Overall Match Score", f"{new_cand_res.score_breakdown.overall_score}%")
+                    with ecol3:
+                        st.metric("Rank in Pool", f"#{new_cand_res.rank} of {refresh_res.total_candidates_screened}")
+                    
+                    st.markdown("**Extracted Skills:**")
+                    st.write(", ".join([f"`{s}`" for s in new_cand.skills]))
+                    st.markdown(f"**Extracted Education**: `{new_cand.education.degree}` ({new_cand.education.level})")
+                    st.markdown(f"**Assigned Skill Cluster**: `{new_cand_res.cluster_name}`")
+
 with tab_shortlist:
     st.subheader(f"Ranked Candidate Shortlist ({len(filtered_results)} candidates showing)")
     
@@ -184,7 +296,6 @@ with tab_shortlist:
             mime="text/csv"
         )
 
-# --- TAB 2: Clusters View ---
 with tab_clusters:
     st.subheader("🧩 Candidate Skill Archetypes (K-Means Clustering)")
     st.caption("Candidates grouped by latent skill vectors and project keywords to uncover distinct talent pools.")
@@ -212,7 +323,6 @@ with tab_clusters:
                     
                     st.markdown(f"**Recruiter Note**: *{c.shortlist_recommendation}*")
 
-# --- TAB 3: Explainability Inspector ---
 with tab_explain:
     st.subheader("🔎 Deep Candidate Scorecard & Explainable Reasoning")
     
@@ -242,15 +352,16 @@ with tab_explain:
             st.metric("Cluster Cohort", target_res.cluster_name)
             
         st.markdown("#### 🎯 Score Component Decomposition")
+        total_w = skill_weight + exp_weight + edu_weight + proj_weight or 1
         mcol1, mcol2, mcol3, mcol4 = st.columns(4)
         with mcol1:
-            st.metric("1. Skills Overlap (45%)", f"{b.skill_score}%", f"{round(b.skill_score * 0.45, 1)} pts")
+            st.metric(f"1. Skills Overlap ({int(skill_weight/total_w*100)}%)", f"{b.skill_score}%", f"{round(b.skill_score * (skill_weight/total_w), 1)} pts")
         with mcol2:
-            st.metric("2. Experience Fit (25%)", f"{b.experience_score}%", f"{round(b.experience_score * 0.25, 1)} pts")
+            st.metric(f"2. Experience Fit ({int(exp_weight/total_w*100)}%)", f"{b.experience_score}%", f"{round(b.experience_score * (exp_weight/total_w), 1)} pts")
         with mcol3:
-            st.metric("3. Education Fit (15%)", f"{b.education_score}%", f"{round(b.education_score * 0.15, 1)} pts")
+            st.metric(f"3. Education Fit ({int(edu_weight/total_w*100)}%)", f"{b.education_score}%", f"{round(b.education_score * (edu_weight/total_w), 1)} pts")
         with mcol4:
-            st.metric("4. Project Match (15%)", f"{b.project_score}%", f"{round(b.project_score * 0.15, 1)} pts")
+            st.metric(f"4. Project Match ({int(proj_weight/total_w*100)}%)", f"{b.project_score}%", f"{round(b.project_score * (proj_weight/total_w), 1)} pts")
             
         st.markdown("#### 💡 Why did this candidate rank here?")
         for h in b.explanation_highlights:
@@ -266,9 +377,9 @@ with tab_explain:
                 st.caption("No direct required skills matched.")
                 
             if b.matched_preferred_skills:
-                st.markdown("**Bonus Preferred Skills Matched:**")
+                st.markdown("<br>**Bonus Preferred Skills Matched:**", unsafe_allow_html=True)
                 for s in b.matched_preferred_skills:
-                    st.markdown(f"<span class='highlight-badge'>★ {s}</span> ", unsafe_allow_html=True)
+                    st.markdown(f"<span class='pref-badge'>★ {s}</span> ", unsafe_allow_html=True)
         with scol2:
             st.markdown("**Missing Required Skills (Gaps):**")
             if b.missing_required_skills:
@@ -281,49 +392,42 @@ with tab_explain:
         for proj in c.projects:
             st.info(f"📌 {proj}")
 
-# --- TAB 4: Upload & Parse Resume ---
-with tab_upload:
-    st.subheader("📄 Upload or Paste Custom Resume")
-    st.caption("Test the automated entity extractor (skills, experience, education, companies) and evaluate in real-time.")
+with tab_new_job:
+    st.subheader("➕ Create / Define a New Job Description")
+    st.caption("Add a custom job opening to screen all candidates against.")
     
-    custom_resume_text = st.text_area(
-        "Paste Raw Resume Text:",
-        height=220,
-        placeholder="""Pritam Kumar Modak
-Email: pritam.modak@example.com | Experience: 5.5 Years in Web Development
-Skills: React, TypeScript, Next.js, Redux, Tailwind CSS, Jest, GraphQL, REST APIs, Git
-Education: B.Tech in Information Technology from Supreme Knowledge Foundation
-Companies: TCS, Cognizant
-Projects:
-- Built high-performance SaaS analytics dashboard using React 18, Next.js, and TypeScript.
-- Architected reusable component library and automated unit test suites in Jest."""
-    )
-    
-    if st.button("⚡ Extract Structured Fields & Screen Candidate", type="primary"):
-        if not custom_resume_text.strip():
-            st.error("Please enter resume text.")
-        else:
-            with st.spinner("Extracting entities and evaluating candidate..."):
-                new_cand = service.add_resume(custom_resume_text)
-                refresh_res = service.run_screening(active_job_id, force_refresh=True)
-                new_cand_res = next(r for r in refresh_res.results if r.candidate.id == new_cand.id)
+    with st.form("new_job_form"):
+        nj_title = st.text_input("Job Title", placeholder="e.g. Lead Machine Learning Engineer")
+        nj_dept = st.selectbox("Department", ["Engineering", "Data Science", "Quality Assurance", "Analytics", "Backend", "Frontend", "Product"])
+        nj_exp = st.number_input("Minimum Experience (Years)", min_value=0.0, max_value=15.0, value=3.0, step=0.5)
+        nj_req_skills = st.text_input("Required Skills (Comma separated)", placeholder="e.g. PyTorch, Python, Docker, FastAPI, Computer Vision")
+        nj_pref_skills = st.text_input("Preferred / Bonus Skills (Comma separated)", placeholder="e.g. Kubernetes, MLflow, AWS, OpenCV")
+        nj_edu = st.selectbox("Minimum Education Level", ["Bachelor", "Master", "Doctorate", "Associate", "Bootcamp"])
+        nj_desc = st.text_area("Job Summary / Description", placeholder="Brief description of the role...")
+        nj_resp = st.text_area("Key Responsibilities (One per line)", placeholder="Design and train neural networks\nDeploy models to cloud infrastructure\nCollaborate with product teams")
+        
+        submitted = st.form_submit_button("🚀 Create Job & Run Initial Screening", type="primary")
+        if submitted:
+            if not nj_title.strip() or not nj_req_skills.strip():
+                st.error("Please fill in Job Title and Required Skills.")
+            else:
+                new_j_id = f"job_{nj_title.lower().replace(' ', '_').replace('/', '_')[:25]}"
+                req_list = [s.strip() for s in nj_req_skills.split(',') if s.strip()]
+                pref_list = [s.strip() for s in nj_pref_skills.split(',') if s.strip()]
+                resp_list = [r.strip() for r in nj_resp.split('\n') if r.strip()]
                 
-                st.success(f"Candidate **{new_cand.name}** successfully parsed and screened!")
-                
-                ecol1, ecol2, ecol3 = st.columns(3)
-                with ecol1:
-                    st.metric("Extracted Experience", f"{new_cand.years_exp} Years")
-                with ecol2:
-                    st.metric("Overall Match Score", f"{new_cand_res.score_breakdown.overall_score}%")
-                with ecol3:
-                    st.metric("Rank in Pool", f"#{new_cand_res.rank} of {refresh_res.total_candidates_screened}")
-                
-                st.markdown("**Extracted Skills:**")
-                st.write(", ".join([f"`{s}`" for s in new_cand.skills]))
-                
-                st.markdown("**Extracted Education:**")
-                st.write(f"`{new_cand.education.degree}` ({new_cand.education.level})")
-                
-                st.markdown(f"**Assigned Skill Cluster**: `{new_cand_res.cluster_name}`")
-                
-                st.info("💡 Switch to the **'Candidate Shortlist'** or **'Explainability Inspector'** tab to view the complete scorecard.")
+                new_job_obj = JobDescription(
+                    id=new_j_id,
+                    title=nj_title.strip(),
+                    department=nj_dept,
+                    min_experience_years=nj_exp,
+                    required_skills=req_list,
+                    preferred_skills=pref_list,
+                    min_education=nj_edu,
+                    description=nj_desc.strip(),
+                    responsibilities=resp_list
+                )
+                service.add_job(new_job_obj)
+                st.success(f"Job **{nj_title}** created successfully! Select it from the sidebar to view candidate rankings.")
+                st.rerun()
+EOF

@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from app.schemas import Candidate, JobDescription, ScoreBreakdown
 from app.vectorizer import TextVectorizer
 import numpy as np
@@ -99,10 +99,24 @@ class ExplainableMatcher:
         project_score = max(20.0, min(100.0, (sim + 0.2) * 80.0))
         return round(project_score, 1)
 
-    def calculate_match(self, candidate: Candidate, job: JobDescription) -> ScoreBreakdown:
+    def calculate_match(
+        self,
+        candidate: Candidate,
+        job: JobDescription,
+        skill_weight: float = 0.45,
+        exp_weight: float = 0.25,
+        edu_weight: float = 0.15,
+        project_weight: float = 0.15,
+        strict_core_skills: bool = False
+    ) -> ScoreBreakdown:
+        
         skill_score, matched_req, missing_req, matched_pref = self.evaluate_skills(
             candidate.skills, job.required_skills, job.preferred_skills
         )
+        
+        if strict_core_skills and missing_req:
+            penalty_factor = (len(matched_req) / max(len(job.required_skills), 1))
+            skill_score *= penalty_factor
         
         exp_score, exp_delta = self.evaluate_experience(
             candidate.years_exp, job.min_experience_years
@@ -114,11 +128,20 @@ class ExplainableMatcher:
         job_full_text = f"{job.title} {job.description} {' '.join(job.responsibilities)} {' '.join(job.required_skills)}"
         project_score = self.evaluate_project_relevance(candidate.projects, job_full_text)
         
+        total_weight = skill_weight + exp_weight + edu_weight + project_weight
+        if total_weight <= 0:
+            total_weight = 1.0
+            
+        w_skill = skill_weight / total_weight
+        w_exp = exp_weight / total_weight
+        w_edu = edu_weight / total_weight
+        w_proj = project_weight / total_weight
+        
         overall = (
-            (skill_score * 0.45) +
-            (exp_score * 0.25) +
-            (edu_score * 0.15) +
-            (project_score * 0.15)
+            (skill_score * w_skill) +
+            (exp_score * w_exp) +
+            (edu_score * w_edu) +
+            (project_score * w_proj)
         )
         overall_score = round(min(100.0, max(0.0, overall)), 1)
         
@@ -131,20 +154,20 @@ class ExplainableMatcher:
         
         if exp_delta >= 0:
             highlights.append(f"Exceeds experience target by +{exp_delta} yrs ({candidate.years_exp} yrs total vs {job.min_experience_years} yrs required).")
-            strengths.append(f"Solid experience seniority ({candidate.years_exp} yrs)")
+            strengths.append(f"Solid seniority match ({candidate.years_exp} yrs)")
         else:
-            highlights.append(f"Experience is {abs(exp_delta)} yrs below requirement ({candidate.years_exp} yrs vs {job.min_experience_years} yrs).")
-            gaps.append(f"Years of experience below target ({candidate.years_exp} vs {job.min_experience_years} yrs)")
+            highlights.append(f"Experience is {abs(exp_delta)} yrs below requirement ({candidate.years_exp} vs {job.min_experience_years} yrs).")
+            gaps.append(f"Experience below target ({candidate.years_exp} vs {job.min_experience_years} yrs)")
             
         if matched_req:
             strengths.append(f"Core skills: {', '.join(matched_req[:4])}")
         if matched_pref:
-            strengths.append(f"Bonus preferred skills: {', '.join(matched_pref)}")
+            strengths.append(f"Bonus skills: {', '.join(matched_pref)}")
         if missing_req:
             gaps.append(f"Missing required skills: {', '.join(missing_req)}")
             
         if candidate.companies:
-            strengths.append(f"Prior experience at reputable companies: {', '.join(candidate.companies[:3])}")
+            strengths.append(f"Prior experience: {', '.join(candidate.companies[:3])}")
             
         return ScoreBreakdown(
             overall_score=overall_score,

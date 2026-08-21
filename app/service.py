@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
 
 from app.schemas import (
@@ -13,6 +13,7 @@ from app.extractor import ResumeExtractor
 from app.vectorizer import TextVectorizer, VectorIndex
 from app.matcher import ExplainableMatcher
 from app.clusterer import CandidateClusterer
+from app.file_parser import extract_text_from_file
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
@@ -35,7 +36,6 @@ class ScreeningService:
         jobs_file = os.path.join(DATA_DIR, "jobs.json")
         resumes_file = os.path.join(DATA_DIR, "resumes.json")
         
-        # If files are missing, automatically generate synthetic dataset
         if not os.path.exists(jobs_file) or not os.path.exists(resumes_file) or (os.path.exists(resumes_file) and os.path.getsize(resumes_file) < 50):
             try:
                 from data_generator import generate_synthetic_dataset
@@ -96,16 +96,35 @@ class ScreeningService:
         self._fit_vectorizer()
         return cand
 
-    def run_screening(self, job_id: str, force_refresh: bool = False) -> ScreeningResponse:
-        if not force_refresh and job_id in self.cached_screenings:
-            return self.cached_screenings[job_id]
+    def add_resume_file(self, file_bytes: bytes, filename: str) -> Candidate:
+        raw_text = extract_text_from_file(file_bytes, filename)
+        if not raw_text.strip():
+            raw_text = f"Resume file: {filename}\nSkills: Software Engineering, Git, Problem Solving"
+        base_name = os.path.splitext(filename)[0].replace('_', ' ').replace('-', ' ').title()
+        return self.add_resume(raw_text=raw_text, candidate_name=base_name)
+
+    def run_screening(
+        self,
+        job_id: str,
+        skill_weight: float = 0.45,
+        exp_weight: float = 0.25,
+        edu_weight: float = 0.15,
+        project_weight: float = 0.15,
+        n_clusters: int = 5,
+        strict_core_skills: bool = False,
+        force_refresh: bool = False
+    ) -> ScreeningResponse:
+        
+        cache_key = f"{job_id}_{skill_weight}_{exp_weight}_{edu_weight}_{project_weight}_{n_clusters}_{strict_core_skills}"
+        if not force_refresh and cache_key in self.cached_screenings:
+            return self.cached_screenings[cache_key]
 
         job = self.jobs.get(job_id)
         if not job:
             if self.jobs:
                 job = list(self.jobs.values())[0]
             else:
-                raise ValueError(f"Job ID '{job_id}' not found and no jobs available.")
+                raise ValueError(f"Job ID '{job_id}' not found.")
 
         candidate_list = list(self.candidates.values())
         if not candidate_list:
@@ -122,7 +141,15 @@ class ScreeningService:
         score_breakdowns: Dict[str, ScoreBreakdown] = {}
 
         for cand in candidate_list:
-            breakdown = self.matcher.calculate_match(cand, job)
+            breakdown = self.matcher.calculate_match(
+                candidate=cand,
+                job=job,
+                skill_weight=skill_weight,
+                exp_weight=exp_weight,
+                edu_weight=edu_weight,
+                project_weight=project_weight,
+                strict_core_skills=strict_core_skills
+            )
             candidate_scores[cand.id] = breakdown.overall_score
             score_breakdowns[cand.id] = breakdown
 
@@ -135,6 +162,7 @@ class ScreeningService:
         vec_index = VectorIndex(cand_vectors.shape[1])
         vec_index.add([c.id for c in candidate_list], cand_vectors)
 
+        self.clusterer.n_clusters = max(2, min(8, n_clusters))
         labels, cluster_summaries = self.clusterer.cluster_candidates(
             candidates=candidate_list,
             candidate_vectors=cand_vectors,
@@ -181,46 +209,5 @@ class ScreeningService:
             results=final_results
         )
 
-        self.cached_screenings[job_id] = response
+        self.cached_screenings[cache_key] = response
         return response
-
-    def filter_results(self, filter_req: ScreeningFilterRequest) -> ScreeningResponse:
-        screening = self.run_screening(filter_req.job_id)
-        filtered = list(screening.results)
-
-        if filter_req.cluster_id is not None:
-            filtered = [r for r in filtered if r.cluster_id == filter_req.cluster_id]
-
-        if filter_req.min_score is not None:
-            filtered = [r for r in filtered if r.score_breakdown.overall_score >= filter_req.min_score]
-
-        if filter_req.min_exp is not None:
-            filtered = [r for r in filtered if r.candidate.years_exp >= filter_req.min_exp]
-
-        if filter_req.required_skills:
-            req_set = {s.lower() for s in filter_req.required_skills}
-            filtered = [
-                r for r in filtered
-                if req_set.issubset({s.lower() for s in r.candidate.skills})
-            ]
-
-        if filter_req.search_query:
-            q = filter_req.search_query.lower()
-            filtered = [
-                r for r in filtered
-                if q in r.candidate.name.lower() or
-                   q in (r.candidate.email or "").lower() or
-                   any(q in s.lower() for s in r.candidate.skills) or
-                   any(q in c.lower() for c in r.candidate.companies)
-            ]
-
-        filtered = filtered[:filter_req.limit]
-
-        return ScreeningResponse(
-            job_id=screening.job_id,
-            job_title=screening.job_title,
-            total_candidates_screened=screening.total_candidates_screened,
-            shortlisted_count=len([r for r in filtered if r.score_breakdown.overall_score >= 70.0]),
-            clusters=screening.clusters,
-            results=filtered
-        )

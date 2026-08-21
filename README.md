@@ -3,83 +3,67 @@ title: AI Resume Screening & Candidate Clustering
 emoji: 🧠
 colorFrom: indigo
 colorTo: blue
-sdk: gradio
-sdk_version: 4.20.0
-app_file: app.py
+sdk: streamlit
+sdk_version: 1.32.0
+app_file: streamlit_app.py
 pinned: false
 license: mit
 ---
 
-# AI Resume Screening & Candidate Clustering Platform
+# AI Resume Screening & Candidate Clustering Platform (Streamlit)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/2006pritam/AI-Resume-Screening)
 
-An explainable, high-throughput candidate screening and skill-archetype clustering platform built with **FastAPI / Gradio**, **Python NLP**, and **React**. Designed for staffing agencies and talent acquisition teams to shortlist and analyze 300–800+ resumes within seconds.
+An explainable, high-throughput candidate screening and skill-archetype clustering platform built with **Streamlit**, **FastAPI**, and **Python NLP**. Designed for staffing agencies and recruiters to shortlist, cluster, and evaluate 300–800+ resumes in seconds.
 
 ---
 
 ## 🌟 Key Features
 
-1. **High-Throughput Structured Extraction (NER & Regex)**:
-   - Extracts canonical skills, years of experience, degree level/field, and previous companies.
-   - Works with `spaCy` NLP and provides pure Python/Regex rule-based fallbacks.
+1. **Interactive Streamlit Dashboard (`streamlit_app.py`)**:
+   - **Target Role Switcher**: React Developer, QA Automation, Data Analyst, Node.js Backend.
+   - **Shortlist Table**: Sortable candidate ranking with interactive score progress bars, search, and CSV export.
+   - **Skill Archetype Clusters**: Visual cards displaying cluster distribution, dominant skills, and recruiter recommendations.
+   - **Explainability Inspector**: Deep candidate scorecards decomposing scores across Skills (45%), Experience (25%), Education (15%), and Projects (15%).
+   - **Resume Text Extractor**: Paste raw resume text for instantaneous structured entity parsing and real-time re-ranking.
 
-2. **Explainable Scoring Engine (No Heavy LLM Dependency)**:
-   - **Skill Fit (45%)**: Exact & semantic overlap of required skills + bonus points for preferred skills.
-   - **Experience Alignment (25%)**: Linear calibration against minimum required years with seniority scaling.
-   - **Education Fit (15%)**: Degree hierarchy (Doctorate > Master > Bachelor > Bootcamp) and major alignment.
-   - **Project & Semantic Relevance (15%)**: Cosine similarity between candidate project achievements and JD responsibilities.
-   - **Recruiter Explanations**: Generates transparent reasoning (e.g., matched vs missing skills, experience delta, prior companies).
+2. **High-Throughput Extraction (NER & Taxonomy Matching)**:
+   - Normalizes skills, extracts years of experience, classifies degrees, and tracks previous companies.
 
-3. **Candidate Skill Archetype Clustering**:
-   - Clusters candidates into natural skill groups (e.g., *React & TypeScript Specialists*, *Fullstack MERN*, *QA Automation with Python*, *Data Analytics & BI*).
-   - Uses K-Means vector clustering (compatible with FAISS and pure NumPy) and auto-generates descriptive archetype profiles and recruiter recommendations.
+3. **Multi-Factor Explainable Scoring (No Heavy LLM Dependency)**:
+   $$\text{Score} = 0.45 \cdot S_{\text{skills}} + 0.25 \cdot S_{\text{experience}} + 0.15 \cdot S_{\text{education}} + 0.15 \cdot S_{\text{projects}}$$
 
-4. **Dual Interface**:
-   - **Gradio Dashboard (`app.py`)**: 100% Free 1-click Hugging Face Spaces integration.
-   - **FastAPI + React Dashboard (`app/main.py`)**: Standalone REST API and custom UI for Render/Docker.
+4. **Candidate Skill Clustering**:
+   - Groups candidates into skill cohorts using K-Means and latent profile embeddings.
 
 ---
 
-## 🤗 1-Click Free Deployment on Hugging Face Spaces
-
-1. Go to [Hugging Face — New Space](https://huggingface.co/new-space).
-2. Set Space Name: `ai-resume-screening`
-3. Select License: `MIT`
-4. Select **Gradio** as Space SDK (100% Free CPU default, no payment required!).
-5. Clone or sync this repository:
-   ```bash
-   git clone https://github.com/2006pritam/AI-Resume-Screening.git
-   cd AI-Resume-Screening
-   git remote add space https://huggingface.co/spaces/pritam06/ai-resume-screening
-   git push space main --force
-   ```
-
----
-
-## ☁️ 1-Click Deployment on Render
-
-Click the button below to deploy this repository directly to Render using the pre-configured `render.yaml` Blueprint:
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/2006pritam/AI-Resume-Screening)
-
----
-
-## 🚀 Local Setup Guide
+## 🚀 Running Locally with Streamlit
 
 ```bash
 git clone https://github.com/2006pritam/AI-Resume-Screening.git
 cd AI-Resume-Screening
 
+# Create and activate virtual environment
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
+# Install dependencies
 pip install -r requirements.txt
-python3 data_generator.py
 
-# Launch Gradio UI
-python3 app.py
-
-# OR Launch FastAPI + React UI
-python3 start.py
+# Run the Streamlit Dashboard
+streamlit run streamlit_app.py
 ```
+
+---
+
+## 🤗 Deploying to Hugging Face Spaces (Streamlit SDK)
+
+1. Go to [Hugging Face — New Space](https://huggingface.co/new-space).
+2. Set Space Name: `ai-resume-screening`
+3. Select **Streamlit** as the Space SDK (100% Free CPU default).
+4. Push your repository:
+   ```bash
+   git remote add space https://huggingface.co/spaces/pritam06/ai-resume-screening
+   git push space main --force
+   ```

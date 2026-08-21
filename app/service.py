@@ -39,7 +39,7 @@ class ScreeningService:
         if not os.path.exists(jobs_file) or not os.path.exists(resumes_file) or (os.path.exists(resumes_file) and os.path.getsize(resumes_file) < 50):
             try:
                 from data_generator import generate_synthetic_dataset
-                dataset = generate_synthetic_dataset(150)
+                dataset = generate_synthetic_dataset(160)
                 with open(jobs_file, "w") as f:
                     json.dump(dataset["jobs"], f, indent=2)
                 with open(resumes_file, "w") as f:
@@ -77,10 +77,41 @@ class ScreeningService:
 
     def add_job(self, job: JobDescription) -> JobDescription:
         self.jobs[job.id] = job
-        if job.id in self.cached_screenings:
-            del self.cached_screenings[job.id]
+        self.cached_screenings.clear()
         self._fit_vectorizer()
         return job
+
+    def clear_all_candidates(self):
+        self.candidates.clear()
+        self.cached_screenings.clear()
+        resumes_file = os.path.join(DATA_DIR, "resumes.json")
+        if os.path.exists(resumes_file):
+            with open(resumes_file, "w") as f:
+                json.dump([], f)
+        self._fit_vectorizer()
+
+    def regenerate_fresh_dataset(self, num_candidates: int = 160):
+        from data_generator import generate_synthetic_dataset
+        dataset = generate_synthetic_dataset(num_candidates)
+        
+        jobs_file = os.path.join(DATA_DIR, "jobs.json")
+        resumes_file = os.path.join(DATA_DIR, "resumes.json")
+        
+        with open(jobs_file, "w") as f:
+            json.dump(dataset["jobs"], f, indent=2)
+        with open(resumes_file, "w") as f:
+            json.dump(dataset["resumes"], f, indent=2)
+            
+        self.jobs.clear()
+        self.candidates.clear()
+        self.cached_screenings.clear()
+        
+        for j_id, j_val in dataset["jobs"].items():
+            self.jobs[j_id] = JobDescription(**j_val)
+        for r in dataset["resumes"]:
+            self.candidates[r["id"]] = Candidate(**r)
+            
+        self._fit_vectorizer()
 
     def add_resume(self, raw_text: str, candidate_name: Optional[str] = None, email: Optional[str] = None) -> Candidate:
         cand_id = f"cand_{len(self.candidates) + 1:03d}"

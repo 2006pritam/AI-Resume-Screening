@@ -1,69 +1,99 @@
 {
-  "job_react_dev": {
-    "id": "job_react_dev",
-    "title": "Senior React / Frontend Developer",
+  "job_fullstack_react_node": {
+    "id": "job_fullstack_react_node",
+    "title": "Senior Full Stack Engineer (React / Node.js)",
     "department": "Engineering",
-    "min_experience_years": 4,
+    "min_experience_years": 4.0,
     "required_skills": [
       "React",
       "TypeScript",
-      "JavaScript",
-      "HTML/CSS",
-      "Redux",
+      "Node.js",
+      "Express",
+      "PostgreSQL",
       "REST APIs"
     ],
     "preferred_skills": [
       "Next.js",
+      "Docker",
       "Tailwind CSS",
+      "Redux",
       "GraphQL",
-      "Jest",
-      "CI/CD",
-      "Webpack"
+      "AWS"
     ],
     "min_education": "Bachelor",
-    "description": "Looking for an experienced React developer to build high-performance web applications using modern React, TypeScript, and state management tools.",
+    "description": "Looking for a versatile Senior Full Stack Engineer to build high-scale web platforms using React 18, TypeScript, Node.js microservices, and PostgreSQL.",
     "responsibilities": [
-      "Architect and build reusable frontend components in React and TypeScript",
-      "Optimize web applications for maximum speed and scalability",
-      "Collaborate with backend engineers to integrate REST and GraphQL APIs",
-      "Write comprehensive unit and integration tests using Jest and React Testing Library"
+      "Design and build performant, responsive web applications in React and TypeScript",
+      "Develop high-throughput REST APIs and backend microservices using Node.js and Express",
+      "Architect relational database schemas and optimize queries in PostgreSQL",
+      "Containerize services with Docker and set up automated CI/CD pipelines"
     ]
   },
-  "job_qa_automation": {
-    "id": "job_qa_automation",
-    "title": "QA Automation Engineer",
-    "department": "Quality Assurance",
-    "min_experience_years": 3,
+  "job_ai_ml_engineer": {
+    "id": "job_ai_ml_engineer",
+    "title": "AI / Machine Learning Engineer",
+    "department": "AI & Research",
+    "min_experience_years": 3.0,
     "required_skills": [
-      "Selenium",
       "Python",
-      "Test Automation",
-      "API Testing",
-      "Postman",
-      "Git"
+      "PyTorch",
+      "Machine Learning",
+      "Data Analysis",
+      "FastAPI",
+      "Docker"
     ],
     "preferred_skills": [
-      "Cypress",
-      "Playwright",
-      "Jenkins",
-      "Docker",
-      "SQL",
-      "Jira"
+      "TensorFlow",
+      "Computer Vision",
+      "NLP",
+      "Scikit-Learn",
+      "MLflow",
+      "AWS"
     ],
     "min_education": "Bachelor",
-    "description": "Seeking a dedicated QA Automation Engineer to design, develop, and maintain robust automated test suites for web and backend services.",
+    "description": "Seeking an AI/ML Engineer to train, evaluate, and deploy deep learning models and computer vision pipelines into production environments.",
     "responsibilities": [
-      "Develop automated test scripts using Selenium and Python/Playwright",
-      "Execute end-to-end integration and regression test suites",
-      "Perform API testing with Postman and automated pipelines in Jenkins",
-      "Identify, log, and track software defects in Jira"
+      "Train and fine-tune deep neural networks using PyTorch and TensorFlow",
+      "Develop computer vision and NLP model inference services using FastAPI",
+      "Optimize model quantization, caching, and inference latencies for real-time APIs",
+      "Collaborate with data engineers to build robust data preprocessing pipelines"
     ]
   },
-  "job_data_analyst": {
-    "id": "job_data_analyst",
-    "title": "Data Analyst / BI Specialist",
+  "job_devops_cloud": {
+    "id": "job_devops_cloud",
+    "title": "Cloud DevOps & Site Reliability Engineer",
+    "department": "Infrastructure",
+    "min_experience_years": 4.0,
+    "required_skills": [
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "CI/CD",
+      "Git",
+      "Linux"
+    ],
+    "preferred_skills": [
+      "Terraform",
+      "Jenkins",
+      "Python",
+      "Redis",
+      "Kafka",
+      "PostgreSQL"
+    ],
+    "min_education": "Bachelor",
+    "description": "Join our platform team to architect scalable multi-region AWS cloud infrastructure, automate CI/CD deployments, and maintain 99.99% uptime.",
+    "responsibilities": [
+      "Manage and scale multi-tenant Kubernetes (EKS) clusters and containerized services",
+      "Build automated CI/CD pipelines with GitHub Actions, Jenkins, and Docker",
+      "Implement infrastructure-as-code using Terraform and AWS CloudFormation",
+      "Monitor system performance, logging, and security observability"
+    ]
+  },
+  "job_data_analyst_bi": {
+    "id": "job_data_analyst_bi",
+    "title": "Data Analyst & Business Intelligence Specialist",
     "department": "Analytics",
-    "min_experience_years": 2,
+    "min_experience_years": 2.0,
     "required_skills": [
       "SQL",
       "Python",
@@ -75,48 +105,48 @@
     "preferred_skills": [
       "Power BI",
       "Pandas",
-      "R",
-      "Statistics",
       "Snowflake",
-      "dbt"
+      "dbt",
+      "Statistics",
+      "NumPy"
     ],
     "min_education": "Bachelor",
-    "description": "Looking for a Data Analyst to extract business insights, build interactive dashboards, and drive data-informed decisions across product teams.",
+    "description": "Looking for a Data Analyst to transform complex datasets into interactive BI dashboards and actionable commercial insights for leadership.",
     "responsibilities": [
-      "Query complex relational databases using advanced SQL",
-      "Build automated reporting dashboards in Tableau and Power BI",
-      "Conduct exploratory data analysis using Python and Pandas",
-      "Present key performance metrics and actionable insights to executive leadership"
+      "Write advanced analytical SQL queries across Snowflake and relational databases",
+      "Design and maintain interactive executive dashboards in Tableau and Power BI",
+      "Perform statistical analysis and cohort retention modeling in Python (Pandas/NumPy)",
+      "Automate recurring business metrics reporting to streamline operations"
     ]
   },
-  "job_node_backend": {
-    "id": "job_node_backend",
-    "title": "Backend Node.js Engineer",
-    "department": "Backend",
-    "min_experience_years": 4,
+  "job_qa_automation_eng": {
+    "id": "job_qa_automation_eng",
+    "title": "QA Automation & SDET Engineer",
+    "department": "Quality Assurance",
+    "min_experience_years": 3.0,
     "required_skills": [
-      "Node.js",
-      "Express",
-      "PostgreSQL",
-      "REST APIs",
-      "TypeScript",
-      "Docker"
+      "Selenium",
+      "Python",
+      "Test Automation",
+      "API Testing",
+      "Postman",
+      "Git"
     ],
     "preferred_skills": [
-      "NestJS",
-      "Redis",
-      "MongoDB",
-      "AWS",
-      "Kafka",
-      "Microservices"
+      "Cypress",
+      "Playwright",
+      "PyTest",
+      "Jenkins",
+      "Docker",
+      "Jira"
     ],
     "min_education": "Bachelor",
-    "description": "Join our platform team to design, scale, and maintain high-throughput backend microservices using Node.js, Express, and distributed caching.",
+    "description": "Seeking an SDET / QA Automation Engineer to design, implement, and maintain automated end-to-end regression test suites and API validation pipelines.",
     "responsibilities": [
-      "Design secure and scalable RESTful APIs in Node.js and TypeScript",
-      "Optimize PostgreSQL queries and database schemas for high concurrency",
-      "Implement caching mechanisms with Redis and asynchronous queues",
-      "Containerize microservices with Docker and deploy to cloud environments"
+      "Build scalable automated test frameworks using Selenium WebDriver, Playwright, and PyTest",
+      "Perform automated API integration tests using Postman and Python requests",
+      "Integrate automated smoke and regression tests into Jenkins CI/CD pipelines",
+      "Log, track, and verify software defects in Jira"
     ]
   }
 }

@@ -16,7 +16,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern sleek recruiter dashboard
 st.markdown("""
 <style>
     .cluster-card {
@@ -69,18 +68,17 @@ def get_screening_service():
 
 service = get_screening_service()
 
-# --- SIDEBAR: Role Selection, Global Filters & Advanced Weight Settings ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/8649/8649607.png", width=55)
     st.title("TalentRadar AI")
     st.caption("Explainable Resume Screening & Skill Clustering")
     st.markdown("---")
     
-    # Target Job Selector
     jobs = service.get_all_jobs()
     if not jobs:
-        st.error("No jobs loaded. Please initialize data.")
-        st.stop()
+        st.error("No jobs loaded. Initializing dataset...")
+        service.regenerate_fresh_dataset()
+        jobs = service.get_all_jobs()
         
     job_options = {f"{j.title} (Min {j.min_experience_years}+ yrs)": j.id for j in jobs}
     selected_label = st.selectbox("🎯 Target Role / Job Opening", list(job_options.keys()))
@@ -94,7 +92,7 @@ with st.sidebar:
     search_keyword = st.text_input("🔍 Search by Name, Skill, Company", placeholder="e.g. React, Docker, TCS...")
     
     st.markdown("---")
-    with st.expander("🛠️ Advanced Scoring & Weight Settings", expanded=False):
+    with st.expander("🛠️ Advanced Scoring & Weights", expanded=False):
         st.caption("Customize the relative importance of evaluation components:")
         skill_weight = st.slider("Skill Match Weight", 0, 100, 45, step=5)
         exp_weight = st.slider("Experience Weight", 0, 100, 25, step=5)
@@ -105,7 +103,19 @@ with st.sidebar:
         cluster_k = st.slider("Number of Skill Clusters (k)", 2, 8, 5, step=1)
         strict_core = st.checkbox("Strict Core Skills Mode", value=False, help="Penalizes candidates if any required mandatory skill is missing.")
 
-# --- RUN DYNAMIC SCREENING ---
+    st.markdown("---")
+    with st.expander("🗑️ Dataset Management / Reset", expanded=False):
+        st.caption("Manage or reset the candidate pool:")
+        if st.button("🗑️ Delete All Resumes (Start Fresh)", use_container_width=True):
+            service.clear_all_candidates()
+            st.success("All existing resumes deleted! Upload fresh CVs in the Upload tab.")
+            st.rerun()
+            
+        if st.button("🔄 Generate Fresh Synthetic Pool", use_container_width=True):
+            service.regenerate_fresh_dataset(160)
+            st.success("Generated 160 brand-new candidate profiles!")
+            st.rerun()
+
 screening_res = service.run_screening(
     job_id=active_job_id,
     skill_weight=float(skill_weight),
@@ -116,7 +126,6 @@ screening_res = service.run_screening(
     strict_core_skills=strict_core
 )
 
-# Apply Candidate Filters
 filtered_results = screening_res.results
 if min_score > 0:
     filtered_results = [r for r in filtered_results if r.score_breakdown.overall_score >= min_score]
@@ -133,7 +142,6 @@ if search_keyword.strip():
         or any(q in p.lower() for p in r.candidate.projects)
     ]
 
-# --- DASHBOARD HEADER & KPIS ---
 st.title("🧠 AI Resume Screening & Skill Clustering Dashboard")
 st.markdown(f"**Active Opening**: `{active_job.title}` ({active_job.department}) | **Target Experience**: `{active_job.min_experience_years} Years`")
 
@@ -148,7 +156,6 @@ with col4:
     top_score = screening_res.results[0].score_breakdown.overall_score if screening_res.results else 0
     st.metric("Top Candidate Score", f"{top_score}%")
 
-# Active Job Requirements Expander
 with st.expander("📋 View Active Job Requirements & Responsibilities", expanded=False):
     st.write(f"**Description**: {active_job.description}")
     req_col, pref_col = st.columns(2)
@@ -162,7 +169,6 @@ with st.expander("📋 View Active Job Requirements & Responsibilities", expande
     for resp in active_job.responsibilities:
         st.write(f"- {resp}")
 
-# --- MAIN NAVIGATION TABS ---
 tab_upload, tab_shortlist, tab_clusters, tab_explain, tab_new_job = st.tabs([
     "📥 Dynamic CV Upload Box",
     "🏆 Candidate Shortlist",
@@ -171,9 +177,6 @@ tab_upload, tab_shortlist, tab_clusters, tab_explain, tab_new_job = st.tabs([
     "➕ Create Custom Job"
 ])
 
-# ==========================================
-# TAB 1: DYNAMIC AUTOMATIC CV UPLOAD BOX
-# ==========================================
 with tab_upload:
     st.subheader("📥 Dynamic & Automatic Resume / CV Upload Box")
     st.markdown("Upload candidate resumes in **PDF, DOCX, or TXT** format (or drag-and-drop multiple CV files). The AI extractor will automatically parse structured entities, evaluate candidates against the active opening, and cluster them into skill archetypes.")
@@ -227,13 +230,13 @@ with tab_upload:
             "Paste Raw Resume Content:",
             height=200,
             placeholder="""Pritam Kumar Modak
-Email: pritam.modak@example.com | Experience: 5.5 Years in Web Development
-Skills: React, TypeScript, Next.js, Redux, Tailwind CSS, Jest, GraphQL, REST APIs, Git
-Education: B.Tech in Information Technology from Supreme Knowledge Foundation
+Email: pritam.modak@example.com | Experience: 5.5 Years in Fullstack & Cloud
+Skills: React, TypeScript, Next.js, Node.js, Express, PostgreSQL, Docker, AWS, Git
+Education: B.Tech in Information Technology
 Companies: TCS, Cognizant
 Projects:
-- Built high-performance SaaS analytics dashboard using React 18, Next.js, and TypeScript.
-- Architected reusable component library and automated unit test suites in Jest."""
+- Built scalable web platforms in React 18, TypeScript, and Node.js microservices handling high traffic.
+- Deployed containerized applications with Docker on AWS."""
         )
         
         if st.button("⚡ Extract Structured Fields & Screen Resume", type="primary"):
@@ -260,14 +263,14 @@ Projects:
                     st.markdown(f"**Extracted Education**: `{new_cand.education.degree}` ({new_cand.education.level})")
                     st.markdown(f"**Assigned Skill Cluster**: `{new_cand_res.cluster_name}`")
 
-# ==========================================
-# TAB 2: CANDIDATE SHORTLIST TABLE
-# ==========================================
 with tab_shortlist:
     st.subheader(f"Ranked Candidate Shortlist ({len(filtered_results)} candidates showing)")
     
     if not filtered_results:
-        st.warning("No candidates match the specified filters. Try lowering the minimum score or experience.")
+        if screening_res.total_candidates_screened == 0:
+            st.info("ℹ️ The candidate pool is currently empty. Go to the **'Dynamic CV Upload Box'** tab to upload resumes, or click **'Generate Fresh Synthetic Pool'** in the sidebar!")
+        else:
+            st.warning("No candidates match the specified filters. Try lowering the minimum score or experience sliders.")
     else:
         table_data = []
         for r in filtered_results:
@@ -310,15 +313,12 @@ with tab_shortlist:
             mime="text/csv"
         )
 
-# ==========================================
-# TAB 3: CLUSTERS VIEW
-# ==========================================
 with tab_clusters:
     st.subheader("🧩 Candidate Skill Archetypes (K-Means Clustering)")
     st.caption("Candidates grouped by latent skill vectors and project keywords to uncover distinct talent pools.")
     
     if not screening_res.clusters:
-        st.info("No skill clusters found.")
+        st.info("No skill clusters available. Upload resumes to generate clusters.")
     else:
         num_cols = min(3, len(screening_res.clusters))
         for row_start in range(0, len(screening_res.clusters), num_cols):
@@ -340,9 +340,6 @@ with tab_clusters:
                     
                     st.markdown(f"**Recruiter Note**: *{c.shortlist_recommendation}*")
 
-# ==========================================
-# TAB 4: DEEP EXPLAINABILITY INSPECTOR
-# ==========================================
 with tab_explain:
     st.subheader("🔎 Deep Candidate Scorecard & Explainable Reasoning")
     
@@ -412,16 +409,13 @@ with tab_explain:
         for proj in c.projects:
             st.info(f"📌 {proj}")
 
-# ==========================================
-# TAB 5: CREATE CUSTOM JOB OPENING
-# ==========================================
 with tab_new_job:
     st.subheader("➕ Create / Define a New Job Description")
     st.caption("Add a custom job opening to screen all candidates against.")
     
     with st.form("new_job_form"):
         nj_title = st.text_input("Job Title", placeholder="e.g. Lead Machine Learning Engineer")
-        nj_dept = st.selectbox("Department", ["Engineering", "Data Science", "Quality Assurance", "Analytics", "Backend", "Frontend", "Product"])
+        nj_dept = st.selectbox("Department", ["Engineering", "AI & Research", "Infrastructure", "Quality Assurance", "Analytics", "Backend", "Frontend", "Product"])
         nj_exp = st.number_input("Minimum Experience (Years)", min_value=0.0, max_value=15.0, value=3.0, step=0.5)
         nj_req_skills = st.text_input("Required Skills (Comma separated)", placeholder="e.g. PyTorch, Python, Docker, FastAPI, Computer Vision")
         nj_pref_skills = st.text_input("Preferred / Bonus Skills (Comma separated)", placeholder="e.g. Kubernetes, MLflow, AWS, OpenCV")

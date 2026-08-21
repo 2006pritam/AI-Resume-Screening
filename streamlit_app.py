@@ -61,6 +61,10 @@ with st.sidebar:
     
     # Target Job Selector
     jobs = service.get_all_jobs()
+    if not jobs:
+        st.error("No jobs loaded. Initializing dataset...")
+        st.stop()
+        
     job_options = {f"{j.title} (Min {j.min_experience_years}+ yrs)": j.id for j in jobs}
     selected_label = st.selectbox("🎯 Target Role / Job Description", list(job_options.keys()))
     active_job_id = job_options[selected_label]
@@ -185,22 +189,28 @@ with tab_clusters:
     st.subheader("🧩 Candidate Skill Archetypes (K-Means Clustering)")
     st.caption("Candidates grouped by latent skill vectors and project keywords to uncover distinct talent pools.")
     
-    cols = st.columns(len(screening_res.clusters))
-    for idx, c in enumerate(screening_res.clusters):
-        with cols[idx]:
-            st.markdown(f"""
-            <div class="cluster-card">
-                <h4>{c.cluster_name}</h4>
-                <p><b>Candidates:</b> {c.candidate_count} ({round((c.candidate_count/screening_res.total_candidates_screened)*100, 1)}%)</p>
-                <p><b>Avg Score:</b> {c.avg_score}% | <b>Avg Exp:</b> {c.avg_experience} yrs</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown("**Dominant Skills:**")
-            for sk in c.top_dominant_skills[:4]:
-                st.caption(f"• {sk['skill']} ({sk['percentage']}%)")
-            
-            st.markdown(f"**Recruiter Note**: *{c.shortlist_recommendation}*")
+    if not screening_res.clusters:
+        st.info("No skill clusters found.")
+    else:
+        num_cols = min(3, len(screening_res.clusters))
+        for row_start in range(0, len(screening_res.clusters), num_cols):
+            row_clusters = screening_res.clusters[row_start : row_start + num_cols]
+            cols = st.columns(len(row_clusters))
+            for idx, c in enumerate(row_clusters):
+                with cols[idx]:
+                    st.markdown(f"""
+                    <div class="cluster-card">
+                        <h4>{c.cluster_name}</h4>
+                        <p><b>Candidates:</b> {c.candidate_count} ({round((c.candidate_count/max(screening_res.total_candidates_screened, 1))*100, 1)}%)</p>
+                        <p><b>Avg Score:</b> {c.avg_score}% | <b>Avg Exp:</b> {c.avg_experience} yrs</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("**Dominant Skills:**")
+                    for sk in c.top_dominant_skills[:4]:
+                        st.caption(f"• {sk['skill']} ({sk['percentage']}%)")
+                    
+                    st.markdown(f"**Recruiter Note**: *{c.shortlist_recommendation}*")
 
 # --- TAB 3: Explainability Inspector ---
 with tab_explain:
